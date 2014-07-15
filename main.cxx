@@ -7,6 +7,7 @@
 #include <chrono>
 #include <string>
 #include <stdexcept>
+#include <thread>
 
 #include <cstdlib>
 #include <csignal>
@@ -150,6 +151,8 @@ int main()
 
                 start = std::chrono::system_clock::now();
             }
+            else
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
         /////////////
