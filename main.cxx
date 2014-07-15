@@ -59,7 +59,7 @@ void render_field(Container<FieldState> const & field)
     for (auto & fs : field)
     {
         if (fs == FieldState::Alive)
-            addch(ACS_BLOCK);
+            addch(' ' | A_REVERSE);
         else
             addch(' ');
     }
