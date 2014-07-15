@@ -1,0 +1,13 @@
+# cmake build
+build/
+
+# kdevelop
+*.kdev4
+.kdev4/
+
+# qtcreator
+CMakeLists.txt.user
+
+# temporary files
+*~
+

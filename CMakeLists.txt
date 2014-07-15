@@ -1,0 +1,31 @@
+PROJECT ( GameOfLife )
+CMAKE_MINIMUM_REQUIRED ( VERSION 3.0.0 )
+
+# for g++ and clang++
+IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    IF (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7.0")
+        SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x" )
+    ELSE ()
+        SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+    ENDIF ()
+ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    # will have to adjust this... older clang versions may need -std=c++0x
+    # but I could not find an exact version number :-/
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+ENDIF ()
+
+SET ( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" )
+
+FIND_PACKAGE ( Threads )
+FIND_PACKAGE ( OpenCL REQUIRED )
+FIND_PACKAGE ( Curses REQUIRED )
+
+FILE ( GLOB gol_SOURCES *.cxx )
+FILE ( GLOB gol_HEADERS *.hxx )
+
+INCLUDE_DIRECTORIES ( ${OPENCL_INCLUDE_DIR} )
+INCLUDE_DIRECTORIES ( ${CURSES_INCLUDE_DIR} )
+
+ADD_EXECUTABLE ( GameOfLife ${gol_SOURCES} ${gol_HEADERS} )
+TARGET_LINK_LIBRARIES ( GameOfLife ${OPENCL_LIBRARY} ${CURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} )
+
