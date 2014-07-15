@@ -6,7 +6,7 @@ char cell(__global char const * field, int x, int y, int width, int height)
     return field[y * width + x];
 }
 
-__kernel void GameOfLife(__global char const * in, __global char * out, int width, int height)
+__kernel void GameOfLife(__global char const * restrict in, __global char * restrict out, int width, int height)
 {
     int tid = get_global_id(0);
     int x = tid % width;
