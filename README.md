@@ -1,7 +1,7 @@
 GameOfLife
 ==========
 
-"Game of Life" implementation using OpenGL.
+"Game of Life" implementation using OpenCL.
 
 Requirements
 ------------
