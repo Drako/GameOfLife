@@ -2,8 +2,8 @@ __constant sampler_t SAMPLER = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_NONE;
 
 uint cell(__read_only image2d_t in, int x, int y)
 {
-    int width = get_image_width(in);
-    int height = get_image_height(in);
+    int const width = get_image_width(in);
+    int const height = get_image_height(in);
 
     if (x == -1) x = width - 1;
     if (y == -1) y = height - 1;
