@@ -221,14 +221,14 @@ int main()
         cl::size_t<3> const origin = [](){
             cl::size_t<3> tmp;
             for (int n = 0; n < 3; ++n)
-                tmp.push_back(0);
+                tmp[n] = 0;
             return tmp;
         }();
         cl::size_t<3> const region = [width,height](){
             cl::size_t<3> tmp;
-            tmp.push_back(width);
-            tmp.push_back(height);
-            tmp.push_back(1);
+            tmp[0] = width;
+            tmp[1] = height;
+            tmp[2] = 1;
             return tmp;
         }();
         queue.enqueueWriteImage(in_buffer, true, origin, region, 0, 0, field.data());
