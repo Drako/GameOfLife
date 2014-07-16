@@ -1,4 +1,4 @@
-sampler_t const SAMPLER = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_REPEAT;
+__constant sampler_t SAMPLER = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_REPEAT;
 
 uint cell(__read_only image2d_t in, int x, int y)
 {

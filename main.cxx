@@ -194,7 +194,7 @@ int main()
             throw std::runtime_error("Could not load rules.cl!");
 
         cl::Program::Sources sources = {
-            { source.c_str(), source.length() + 1 },
+            { source.c_str(), source.length() },
         };
         cl::Program program(ctx, sources);
 
