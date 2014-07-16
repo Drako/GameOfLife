@@ -186,8 +186,9 @@ int main()
 
         cl::ImageFormat const format(CL_R, CL_UNSIGNED_INT8);
 
-        cl::Image2D in_buffer(ctx, CL_MEM_READ_ONLY, format, width, height, 0);
-        cl::Image2D out_buffer(ctx, CL_MEM_READ_ONLY, format, width, height, 0);
+        cl::Image2D buf1(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
+        cl::Image2D buf2(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
+        cl::Image2D *in_buffer = &buf1, *out_buffer = &buf2;
 
         std::string source(load_kernel("rules.cl"));
         if (source.empty())
@@ -213,8 +214,6 @@ int main()
         }
 
         cl::Kernel kernel(program, "GameOfLife");
-        kernel.setArg(0, in_buffer);
-        kernel.setArg(1, out_buffer);
 
         cl::CommandQueue queue(ctx, devices[0]);
 
@@ -231,7 +230,7 @@ int main()
             tmp[2] = 1;
             return tmp;
         }();
-        queue.enqueueWriteImage(in_buffer, true, origin, region, 0, 0, field.data());
+        queue.enqueueWriteImage(*in_buffer, true, origin, region, 0, 0, field.data());
 
         ///////////////
         // main loop //
@@ -242,15 +241,19 @@ int main()
             if (std::chrono::system_clock::now() - start > timeout)
             {
                 // update the field
+                kernel.setArg(0, *in_buffer);
+                kernel.setArg(1, *out_buffer);
+
                 cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NullRange, nullptr, &event);
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NDRange(1, 1), nullptr, &event);
                 event.wait();
 
-                queue.enqueueReadImage(out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
-                queue.enqueueCopyImage(out_buffer, in_buffer, origin, origin, region, nullptr, &event);
+                queue.enqueueReadImage(*out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
                 event.wait();
 
                 render_field(field);
+
+                std::swap(in_buffer, out_buffer);
 
                 start = std::chrono::system_clock::now();
             }
