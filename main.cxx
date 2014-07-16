@@ -186,7 +186,7 @@ int main()
 
         cl::ImageFormat const format(CL_A, CL_UNSIGNED_INT8);
 
-        cl::Image2D buf1(ctx, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, format, width, height, 0, field.data());
+        cl::Image2D buf1(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
         cl::Image2D buf2(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
         cl::Image2D *in_buffer = &buf1, *out_buffer = &buf2;
 
@@ -230,6 +230,8 @@ int main()
             tmp[2] = 1;
             return tmp;
         }();
+
+        queue.enqueueWriteImage(*in_buffer, CL_TRUE, origin, region, 0, 0, field.data());
 
         ///////////////
         // main loop //
