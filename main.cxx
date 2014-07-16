@@ -68,6 +68,33 @@ void render_field(Container<FieldState> const & field)
     refresh();
 }
 
+cl_platform_id select_platform()
+{
+    try
+    {
+        std::vector<cl::Platform> platforms;
+        cl::Platform::get(&platforms);
+
+        for (unsigned n = 0; n < platforms.size(); ++n)
+            std::cout << (n + 1) << " - " << platforms[n].getInfo<CL_PLATFORM_NAME>() << std::endl;
+
+        std::cout << "Select a platform: ";
+        unsigned index;
+        while (!(std::cin >> index) || !index || (index > platforms.size()))
+        {
+            std::cin.clear();
+            std::cin.ignore(std::cin.rdbuf()->in_avail());
+        }
+
+        return platforms[index - 1]();
+    }
+    catch (cl::Error const & err)
+    {
+        std::cerr << "OpenCL-Error: " << err.what() << "(" << err.err() << ")" << std::endl;
+        return nullptr;
+    }
+}
+
 volatile bool run = true;
 
 void sigint_handler(int)
@@ -77,6 +104,10 @@ void sigint_handler(int)
 
 int main()
 {
+    auto platform = select_platform();
+    if (!platform)
+        return EXIT_FAILURE;
+
     try
     {
         //////////////
@@ -99,11 +130,8 @@ int main()
         //////////////////
         // OpenCl-Setup //
         //////////////////
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-
         cl_context_properties cprops[] = {
-            CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platforms[0]()),
+            CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platform),
             0,
         };
 
