@@ -186,7 +186,7 @@ int main()
 
         cl::ImageFormat const format(CL_R, CL_UNSIGNED_INT8);
 
-        cl::Image2D in_buffer(ctx, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, format, width, height, 0, field.data());
+        cl::Image2D in_buffer(ctx, CL_MEM_READ_ONLY, format, width, height, 0);
         cl::Image2D out_buffer(ctx, CL_MEM_READ_ONLY, format, width, height, 0);
 
         std::string source(load_kernel("rules.cl"));
@@ -231,6 +231,7 @@ int main()
             tmp.push_back(1);
             return tmp;
         }();
+        queue.enqueueWriteImage(in_buffer, true, origin, region, 0, 0, field.data());
 
         ///////////////
         // main loop //
