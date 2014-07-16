@@ -1,7 +1,13 @@
 char cell(__global char const * field, int x, int y, int width, int height)
 {
-    if (x < 0 || y < 0 || x >= width || y >= height)
-        return 0;
+    if (x == -1)
+        x = width - 1;
+    if (y == -1)
+        y = height - 1;
+    if (x == width)
+        x = 0;
+    if (y == height)
+        y = 0;
 
     return field[y * width + x];
 }

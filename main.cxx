@@ -93,7 +93,8 @@ int main()
         std::vector<FieldState> field(width * height);
         init_field(field);
 
-        auto const timeout = std::chrono::seconds(2);
+        // update twice per second
+        auto const timeout = std::chrono::milliseconds(500);
 
         //////////////////
         // OpenCl-Setup //
