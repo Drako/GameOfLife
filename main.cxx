@@ -199,7 +199,18 @@ int main()
         cl::Program program(ctx, sources);
 
         auto devices = ctx.getInfo<CL_CONTEXT_DEVICES>();
-        program.build(devices);
+        try
+        {
+            program.build(devices);
+        }
+        catch (cl::Error const & err)
+        {
+            endwin();
+            std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
+            if (err.err() == CL_BUILD_PROGRAM_FAILURE)
+                std::cerr << "Build log:\n" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << std::endl;
+            return EXIT_FAILURE;
+        }
 
         cl::Kernel kernel(program, "GameOfLife");
         kernel.setArg(0, in_buffer);

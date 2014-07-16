@@ -1,12 +1,12 @@
 sampler_t const SAMPLER = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_REPEAT;
 
-uint cell(__global __read_only image2d_t in, int x, int y)
+uint cell(__read_only image2d_t in, int x, int y)
 {
     uint4 state = read_imageui(in, SAMPLER, (int2)(x, y));
     return state.s0;
 }
 
-__kernel void GameOfLife(__global __read_only image2d_t restrict in, __global __write_only image2d_t restrict out)
+__kernel void GameOfLife(__read_only image2d_t restrict in, __write_only image2d_t restrict out)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
