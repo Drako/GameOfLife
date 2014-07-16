@@ -171,8 +171,8 @@ int main()
         std::vector<FieldState> field(width * height);
         init_field(field);
 
-        // update twice per second
-        auto const timeout = std::chrono::milliseconds(500);
+        // update four times per second
+        auto const timeout = std::chrono::milliseconds(250);
 
         //////////////////
         // OpenCl-Setup //
