@@ -243,9 +243,8 @@ int main()
                 kernel.setArg(0, *in_buffer);
                 kernel.setArg(1, *out_buffer);
 
-                cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NDRange(1, 1), nullptr, &event);
-                event.wait();
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NDRange(1, 1));
+                queue.finish();
 
                 queue.enqueueReadImage(*out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
 
