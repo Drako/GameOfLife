@@ -8,8 +8,8 @@ uint cell(__read_only image2d_t in, int x, int y)
 
 __kernel void GameOfLife(__read_only image2d_t restrict in, __write_only image2d_t restrict out)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
+    int x = get_global_id(1);
+    int y = get_global_id(0);
 
     uint state = cell(in, x, y);
 

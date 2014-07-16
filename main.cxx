@@ -242,7 +242,7 @@ int main()
             {
                 // update the field
                 cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(width, height), cl::NullRange, nullptr, &event);
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NullRange, nullptr, &event);
                 event.wait();
 
                 queue.enqueueReadImage(out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
