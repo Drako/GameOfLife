@@ -6,7 +6,7 @@ uint cell(__read_only image2d_t in, int x, int y)
     return state.s0;
 }
 
-__kernel void GameOfLife(__read_only image2d_t restrict in, __write_only image2d_t restrict out)
+__kernel void GameOfLife(__read_only image2d_t in, __write_only image2d_t out)
 {
     int x = get_global_id(1);
     int y = get_global_id(0);
