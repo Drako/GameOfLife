@@ -1,33 +1,26 @@
-char cell(__global char const * field, int x, int y, int width, int height)
-{
-    if (x == -1)
-        x = width - 1;
-    if (y == -1)
-        y = height - 1;
-    if (x == width)
-        x = 0;
-    if (y == height)
-        y = 0;
+sampler_t const SAMPLER = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_REPEAT;
 
-    return field[y * width + x];
+uint cell(__global __read_only image2d_t in, int x, int y)
+{
+    uint4 state = read_imageui(in, SAMPLER, (int2)(x, y));
+    return state.s0;
 }
 
-__kernel void GameOfLife(__global char const * restrict in, __global char * restrict out, int width, int height)
+__kernel void GameOfLife(__global __read_only image2d_t restrict in, __global __write_only image2d_t restrict out)
 {
-    int tid = get_global_id(0);
-    int x = tid % width;
-    int y = tid / width;
+    int x = get_global_id(0);
+    int y = get_global_id(1);
 
-    char state = in[tid]; // 0 - dead, 1 - alive
+    uint state = cell(in, x, y);
 
     // count the living neighbours
-    int living_neighbours = (
-        cell(in, x - 1, y - 1, width, height) + cell(in, x, y - 1, width, height) + cell(in, x + 1, y - 1, width, height) +
-        cell(in, x - 1, y, width, height)                                         + cell(in, x + 1, y, width, height) +
-        cell(in, x - 1, y + 1, width, height) + cell(in, x, y + 1, width, height) + cell(in, x + 1, y + 1, width, height)
+    uint living_neighbours = (
+        cell(in, x - 1, y - 1) + cell(in, x, y - 1) + cell(in, x + 1, y - 1) +
+        cell(in, x - 1, y)                          + cell(in, x + 1, y) +
+        cell(in, x - 1, y + 1) + cell(in, x, y + 1) + cell(in, x + 1, y + 1)
     );
 
-    if (state == 1)
+    if (state != 0)
     {
         // only 2 and 3 is good
         // otherwise the cell dies from under-/overpopulation
@@ -42,5 +35,5 @@ __kernel void GameOfLife(__global char const * restrict in, __global char * rest
     }
 
     // return the result
-    out[tid] = state;
+    write_imageui(out, (int2)(x, y), (uint4)(state));
 }

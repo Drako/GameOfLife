@@ -4,6 +4,7 @@
 #include <iterator>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <chrono>
 #include <string>
 #include <stdexcept>
@@ -55,7 +56,7 @@ std::string load_kernel(std::string const & filename)
 template <template <typename...> class Container>
 void render_field(Container<FieldState> const & field)
 {
-    clear();
+    move(0, 0);
 
     for (auto & fs : field)
     {
@@ -66,6 +67,52 @@ void render_field(Container<FieldState> const & field)
     }
 
     refresh();
+}
+
+std::string clerror(cl_int error)
+{
+    std::ostringstream stream;
+
+    switch (error)
+    {
+    default:
+        stream << "Unknown (" << error << ")";
+        break;
+#define CLERROR(name) case name: stream << #name << " (" << name << ")"; break;
+        CLERROR(CL_BUILD_PROGRAM_FAILURE)
+        CLERROR(CL_COMPILER_NOT_AVAILABLE)
+        CLERROR(CL_IMAGE_FORMAT_NOT_SUPPORTED)
+        CLERROR(CL_INVALID_ARG_INDEX)
+        CLERROR(CL_INVALID_ARG_SIZE)
+        CLERROR(CL_INVALID_ARG_VALUE)
+        CLERROR(CL_INVALID_BINARY)
+        CLERROR(CL_INVALID_BUILD_OPTIONS)
+        CLERROR(CL_INVALID_COMMAND_QUEUE)
+        CLERROR(CL_INVALID_CONTEXT)
+        CLERROR(CL_INVALID_DEVICE)
+        CLERROR(CL_INVALID_EVENT_WAIT_LIST)
+        CLERROR(CL_INVALID_GLOBAL_OFFSET)
+        CLERROR(CL_INVALID_HOST_PTR)
+        CLERROR(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR)
+        CLERROR(CL_INVALID_IMAGE_SIZE)
+        CLERROR(CL_INVALID_KERNEL)
+        CLERROR(CL_INVALID_KERNEL_ARGS)
+        CLERROR(CL_INVALID_MEM_OBJECT)
+        CLERROR(CL_INVALID_OPERATION)
+        CLERROR(CL_INVALID_PROGRAM)
+        CLERROR(CL_INVALID_PROGRAM_EXECUTABLE)
+        CLERROR(CL_INVALID_SAMPLER)
+        CLERROR(CL_INVALID_VALUE)
+        CLERROR(CL_INVALID_WORK_DIMENSION)
+        CLERROR(CL_INVALID_WORK_GROUP_SIZE)
+        CLERROR(CL_INVALID_WORK_ITEM_SIZE)
+        CLERROR(CL_MEM_OBJECT_ALLOCATION_FAILURE)
+        CLERROR(CL_OUT_OF_HOST_MEMORY)
+        CLERROR(CL_OUT_OF_RESOURCES)
+#undef CLERROR
+    }
+
+    return stream.str();
 }
 
 cl_platform_id select_platform()
@@ -90,7 +137,7 @@ cl_platform_id select_platform()
     }
     catch (cl::Error const & err)
     {
-        std::cerr << "OpenCL-Error: " << err.what() << "(" << err.err() << ")" << std::endl;
+        std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
         return nullptr;
     }
 }
@@ -136,8 +183,11 @@ int main()
         };
 
         cl::Context ctx(CL_DEVICE_TYPE_ALL, cprops, nullptr, nullptr);
-        cl::Buffer in_buffer(ctx, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, field.size(), field.data());
-        cl::Buffer out_buffer(ctx, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, field.size(), field.data());
+
+        cl::ImageFormat const format(CL_R, CL_UNSIGNED_INT8);
+
+        cl::Image2D in_buffer(ctx, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, format, width, height, 0, field.data());
+        cl::Image2D out_buffer(ctx, CL_MEM_READ_ONLY, format, width, height, 0);
 
         std::string source(load_kernel("rules.cl"));
         if (source.empty())
@@ -154,10 +204,22 @@ int main()
         cl::Kernel kernel(program, "GameOfLife");
         kernel.setArg(0, in_buffer);
         kernel.setArg(1, out_buffer);
-        kernel.setArg(2, width);
-        kernel.setArg(3, height);
 
         cl::CommandQueue queue(ctx, devices[0]);
+
+        cl::size_t<3> const origin = [](){
+            cl::size_t<3> tmp;
+            for (int n = 0; n < 3; ++n)
+                tmp.push_back(0);
+            return tmp;
+        }();
+        cl::size_t<3> const region = [width,height](){
+            cl::size_t<3> tmp;
+            tmp.push_back(width);
+            tmp.push_back(height);
+            tmp.push_back(1);
+            return tmp;
+        }();
 
         ///////////////
         // main loop //
@@ -169,11 +231,11 @@ int main()
             {
                 // update the field
                 cl::Event event;
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(field.size()), cl::NDRange(1, 1), nullptr, &event);
+                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(width, height), cl::NullRange, nullptr, &event);
                 event.wait();
 
-                queue.enqueueReadBuffer(out_buffer, CL_TRUE, 0, field.size(), field.data());
-                queue.enqueueCopyBuffer(out_buffer, in_buffer, 0, 0, field.size(), nullptr, &event);
+                queue.enqueueReadImage(out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
+                queue.enqueueCopyImage(out_buffer, in_buffer, origin, origin, region, nullptr, &event);
                 event.wait();
 
                 render_field(field);
@@ -193,7 +255,7 @@ int main()
     catch (cl::Error const & err)
     {
         endwin();
-        std::cerr << "OpenCL-Error: " << err.what() << "(" << err.err() << ")" << std::endl;
+        std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
         return EXIT_FAILURE;
     }
     catch (std::exception const & ex)
