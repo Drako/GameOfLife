@@ -184,7 +184,7 @@ int main()
 
         cl::Context ctx(CL_DEVICE_TYPE_ALL, cprops, nullptr, nullptr);
 
-        cl::ImageFormat const format(CL_A, CL_UNSIGNED_INT8);
+        cl::ImageFormat const format(CL_R, CL_UNSIGNED_INT8);
 
         cl::Image2D buf1(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
         cl::Image2D buf2(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
