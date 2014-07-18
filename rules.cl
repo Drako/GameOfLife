@@ -11,7 +11,7 @@ uint cell(__read_only image2d_t in, int x, int y)
     if (y == height) y = 0;
 
     uint4 state = read_imageui(in, SAMPLER, (int2)(x, y));
-    return state.s0;
+    return state.s3;
 }
 
 __kernel void GameOfLife(__read_only image2d_t in, __write_only image2d_t out)
@@ -43,5 +43,5 @@ __kernel void GameOfLife(__read_only image2d_t in, __write_only image2d_t out)
     }
 
     // return the result
-    write_imageui(out, (int2)(x, y), (uint4)(state, 0, 0, 0));
+    write_imageui(out, (int2)(x, y), (uint4)(0, 0, 0, state));
 }
