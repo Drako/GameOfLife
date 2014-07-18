@@ -1,281 +1,51 @@
-#include <algorithm>
-#include <random>
-#include <vector>
-#include <iterator>
+#include "SDL.hxx"
+#include "Exception.hxx"
+
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <chrono>
-#include <string>
-#include <stdexcept>
-#include <thread>
 
 #include <cstdlib>
-#include <csignal>
-#include <cinttypes>
 
-#include <curses.h>
+#include <GL/gl.h>
 
-#include <CL/cl.hpp>
-
-enum class FieldState
-    : std::uint8_t
+int main() try
 {
-    Dead = 0,
-    Alive = 1,
-};
-
-template <template <typename...> class Container>
-void init_field(Container<FieldState> & field)
-{
-    std::random_device rng;
-    std::mt19937 engine(rng());
-    std::uniform_int_distribution<> dist(0, 23);
-
-    std::generate(std::begin(field), std::end(field), [&]() -> FieldState {
-        return dist(engine) ? FieldState::Dead : FieldState::Alive;
-    });
+    SDL sdl;
+    sdl.set_video_mode();
+    
+    do
+    {
+        sdl.clear();
+        
+        glBegin(GL_TRIANGLES);
+        
+        glColor3f(1.f, .0f, .0f);
+        glVertex2f(sdl.width() / 2.f, 10.f);
+        
+        glColor3f(.0f, 1.f, .0f);
+        glVertex2f(10.f, sdl.height() - 10.f);
+        
+        glColor3f(.0f, .0f, 1.f);
+        glVertex2f(sdl.width() - 10.f, sdl.height() - 10.f);
+        
+        glEnd();
+        
+        sdl.swap_buffers();
+    } while (sdl.handle_events());
+    
+    return EXIT_SUCCESS;
 }
-
-std::string load_kernel(std::string const & filename)
+catch (Exception const & ex)
 {
-    std::ifstream source(filename);
-    if (!source.is_open())
-    {
-        source.open("../" + filename);
-        if (!source.is_open())
-            return std::string();
-    }
-
-    return std::string(
-        std::istreambuf_iterator<char>(source),
-        std::istreambuf_iterator<char>()
-    );
+    std::cerr << ex.what() << std::endl;
+    return EXIT_FAILURE;
 }
-
-template <template <typename...> class Container>
-void render_field(Container<FieldState> const & field)
+catch (std::exception const & ex)
 {
-    move(0, 0);
-
-    for (auto & fs : field)
-    {
-        if (fs == FieldState::Alive)
-            addch(' ' | A_REVERSE);
-        else
-            addch(' ');
-    }
-
-    refresh();
+    std::cerr << "Exception caught: " << ex.what() << std::endl;
+    return EXIT_FAILURE;
 }
-
-std::string clerror(cl_int error)
+catch (...)
 {
-    std::ostringstream stream;
-
-    switch (error)
-    {
-    default:
-        stream << "Unknown (" << error << ")";
-        break;
-#define CLERROR(name) case name: stream << #name << " (" << name << ")"; break;
-        CLERROR(CL_BUILD_PROGRAM_FAILURE)
-        CLERROR(CL_COMPILER_NOT_AVAILABLE)
-        CLERROR(CL_IMAGE_FORMAT_NOT_SUPPORTED)
-        CLERROR(CL_INVALID_ARG_INDEX)
-        CLERROR(CL_INVALID_ARG_SIZE)
-        CLERROR(CL_INVALID_ARG_VALUE)
-        CLERROR(CL_INVALID_BINARY)
-        CLERROR(CL_INVALID_BUILD_OPTIONS)
-        CLERROR(CL_INVALID_COMMAND_QUEUE)
-        CLERROR(CL_INVALID_CONTEXT)
-        CLERROR(CL_INVALID_DEVICE)
-        CLERROR(CL_INVALID_EVENT_WAIT_LIST)
-        CLERROR(CL_INVALID_GLOBAL_OFFSET)
-        CLERROR(CL_INVALID_HOST_PTR)
-        CLERROR(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR)
-        CLERROR(CL_INVALID_IMAGE_SIZE)
-        CLERROR(CL_INVALID_KERNEL)
-        CLERROR(CL_INVALID_KERNEL_ARGS)
-        CLERROR(CL_INVALID_MEM_OBJECT)
-        CLERROR(CL_INVALID_OPERATION)
-        CLERROR(CL_INVALID_PROGRAM)
-        CLERROR(CL_INVALID_PROGRAM_EXECUTABLE)
-        CLERROR(CL_INVALID_SAMPLER)
-        CLERROR(CL_INVALID_VALUE)
-        CLERROR(CL_INVALID_WORK_DIMENSION)
-        CLERROR(CL_INVALID_WORK_GROUP_SIZE)
-        CLERROR(CL_INVALID_WORK_ITEM_SIZE)
-        CLERROR(CL_MEM_OBJECT_ALLOCATION_FAILURE)
-        CLERROR(CL_OUT_OF_HOST_MEMORY)
-        CLERROR(CL_OUT_OF_RESOURCES)
-#undef CLERROR
-    }
-
-    return stream.str();
-}
-
-cl_platform_id select_platform()
-{
-    try
-    {
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-
-        for (unsigned n = 0; n < platforms.size(); ++n)
-            std::cout << (n + 1) << " - " << platforms[n].getInfo<CL_PLATFORM_NAME>() << std::endl;
-
-        std::cout << "Select a platform: ";
-        unsigned index;
-        while (!(std::cin >> index) || !index || (index > platforms.size()))
-        {
-            std::cin.clear();
-            std::cin.ignore(std::cin.rdbuf()->in_avail());
-        }
-
-        return platforms[index - 1]();
-    }
-    catch (cl::Error const & err)
-    {
-        std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
-        return nullptr;
-    }
-}
-
-volatile bool run = true;
-
-void sigint_handler(int)
-{
-    run = false;
-}
-
-int main()
-{
-    auto platform = select_platform();
-    if (!platform)
-        return EXIT_FAILURE;
-
-    try
-    {
-        //////////////
-        // UI setup //
-        //////////////
-        std::signal(SIGINT, &sigint_handler);
-
-        auto screen = initscr();
-        noecho();
-        curs_set(0);
-
-        unsigned width = getmaxx(screen);
-        unsigned height = getmaxy(screen);
-        std::vector<FieldState> field(width * height);
-        init_field(field);
-
-        // update four times per second
-        auto const timeout = std::chrono::milliseconds(250);
-
-        //////////////////
-        // OpenCl-Setup //
-        //////////////////
-        cl_context_properties cprops[] = {
-            CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platform),
-            0,
-        };
-
-        cl::Context ctx(CL_DEVICE_TYPE_ALL, cprops, nullptr, nullptr);
-
-        cl::ImageFormat const format(CL_R, CL_UNSIGNED_INT8);
-
-        cl::Image2D buf1(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
-        cl::Image2D buf2(ctx, CL_MEM_READ_WRITE, format, width, height, 0);
-        cl::Image2D *in_buffer = &buf1, *out_buffer = &buf2;
-
-        std::string source(load_kernel("rules.cl"));
-        if (source.empty())
-            throw std::runtime_error("Could not load rules.cl!");
-
-        cl::Program::Sources sources = {
-            { source.c_str(), source.length() },
-        };
-        cl::Program program(ctx, sources);
-
-        auto devices = ctx.getInfo<CL_CONTEXT_DEVICES>();
-        try
-        {
-            program.build(devices);
-        }
-        catch (cl::Error const & err)
-        {
-            endwin();
-            std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
-            if (err.err() == CL_BUILD_PROGRAM_FAILURE)
-                std::cerr << "Build log:\n" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << std::endl;
-            return EXIT_FAILURE;
-        }
-
-        cl::Kernel kernel(program, "GameOfLife");
-
-        cl::CommandQueue queue(ctx, devices[0]);
-
-        cl::size_t<3> const origin = [](){
-            cl::size_t<3> tmp;
-            for (int n = 0; n < 3; ++n)
-                tmp[n] = 0;
-            return tmp;
-        }();
-        cl::size_t<3> const region = [width,height](){
-            cl::size_t<3> tmp;
-            tmp[0] = width;
-            tmp[1] = height;
-            tmp[2] = 1;
-            return tmp;
-        }();
-
-        queue.enqueueWriteImage(*in_buffer, CL_TRUE, origin, region, 0, 0, field.data());
-
-        ///////////////
-        // main loop //
-        ///////////////
-        std::chrono::system_clock::time_point start;
-        while (run)
-        {
-            if (std::chrono::system_clock::now() - start > timeout)
-            {
-                // update the field
-                kernel.setArg(0, *in_buffer);
-                kernel.setArg(1, *out_buffer);
-
-                queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(height, width), cl::NDRange(1, 1));
-                queue.finish();
-
-                queue.enqueueReadImage(*out_buffer, CL_TRUE, origin, region, 0, 0, field.data());
-
-                render_field(field);
-
-                std::swap(in_buffer, out_buffer);
-
-                start = std::chrono::system_clock::now();
-            }
-            else
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-
-        /////////////
-        // cleanup //
-        /////////////
-        endwin();
-        return EXIT_SUCCESS;
-    }
-    catch (cl::Error const & err)
-    {
-        endwin();
-        std::cerr << "OpenCL-Error: " << err.what() << " -> " << clerror(err.err()) << std::endl;
-        return EXIT_FAILURE;
-    }
-    catch (std::exception const & ex)
-    {
-        endwin();
-        std::cerr << "Error: " << ex.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+    std::cerr << "An unknown exception occurred!" << std::endl;
+    return EXIT_FAILURE;
 }
